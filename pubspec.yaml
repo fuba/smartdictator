@@ -1,0 +1,27 @@
+name: smartdictator
+description: A macOS Flutter app for Japanese speech recognition and text processing.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  speech_to_text: ^6.3.0
+  http: ^1.1.0
+  record: ^4.4.4
+  path_provider: ^2.1.1
+  provider: ^6.0.5
+  flutter_tts: ^3.8.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
