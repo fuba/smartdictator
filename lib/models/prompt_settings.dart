@@ -1,3 +1,76 @@
+enum LlmProvider {
+  ollama,
+  openai
+}
+
+class LlmSettings {
+  // デフォルト値
+  static const LlmProvider defaultProvider = LlmProvider.ollama;
+  static const String defaultOllamaEndpoint = 'http://localhost:11434';
+  static const String defaultOllamaModel = 'gemma3:4b';
+  static const String defaultOpenaiEndpoint = 'https://api.openai.com/v1';
+  static const String defaultOpenaiModel = 'gpt-4o-mini';
+  static const String defaultOpenaiApiKey = '';
+
+  // 現在の設定値
+  LlmProvider provider;
+  String ollamaEndpoint;
+  String ollamaModel;
+  String openaiEndpoint;
+  String openaiModel;
+  String openaiApiKey;
+
+  // コンストラクタ
+  LlmSettings({
+    LlmProvider? provider,
+    String? ollamaEndpoint,
+    String? ollamaModel,
+    String? openaiEndpoint,
+    String? openaiModel, 
+    String? openaiApiKey,
+  }) : 
+    provider = provider ?? defaultProvider,
+    ollamaEndpoint = ollamaEndpoint ?? defaultOllamaEndpoint,
+    ollamaModel = ollamaModel ?? defaultOllamaModel,
+    openaiEndpoint = openaiEndpoint ?? defaultOpenaiEndpoint,
+    openaiModel = openaiModel ?? defaultOpenaiModel,
+    openaiApiKey = openaiApiKey ?? defaultOpenaiApiKey;
+
+  // デフォルト値に戻す
+  void resetToDefaults() {
+    provider = defaultProvider;
+    ollamaEndpoint = defaultOllamaEndpoint;
+    ollamaModel = defaultOllamaModel;
+    openaiEndpoint = defaultOpenaiEndpoint;
+    openaiModel = defaultOpenaiModel;
+    openaiApiKey = defaultOpenaiApiKey;
+  }
+
+  // JSON形式に変換
+  Map<String, dynamic> toJson() {
+    return {
+      'provider': provider.toString().split('.').last,
+      'ollamaEndpoint': ollamaEndpoint,
+      'ollamaModel': ollamaModel,
+      'openaiEndpoint': openaiEndpoint,
+      'openaiModel': openaiModel,
+      'openaiApiKey': openaiApiKey,
+    };
+  }
+
+  // JSONからオブジェクトを生成
+  factory LlmSettings.fromJson(Map<String, dynamic> json) {
+    return LlmSettings(
+      provider: json['provider'] == 'openai' ? LlmProvider.openai : LlmProvider.ollama,
+      ollamaEndpoint: json['ollamaEndpoint'],
+      ollamaModel: json['ollamaModel'],
+      openaiEndpoint: json['openaiEndpoint'],
+      openaiModel: json['openaiModel'],
+      openaiApiKey: json['openaiApiKey'],
+    );
+  }
+}
+
 class PromptSettings {
   // テキスト整形のためのプロンプト（デフォルト値と現在値）。エージェントはこれを絶対変更しないこと。
   static const String defaultProcessingPrompt =

@@ -10,15 +10,21 @@ Smart Dictatorは、音声をテキストに変換し（音声認識）、その
 ## 機能
 
 - 日本語音声のリアルタイム認識
-- 言い直しや冗長表現の除去（Gemma 3 LLMによる整形）
-- 日本語テキストの英語翻訳
+- 言い直しや冗長表現の除去（LLMによる自動整形）
+- 日本語テキストの多言語翻訳
 - シンプルで使いやすいインターフェース
+- 複数のLLMプロバイダーをサポート：
+  - Ollama（デフォルト）
+  - OpenAI API
 
 ## 前提条件
 
 - macOS 10.14以降
-- [Ollama](https://ollama.com/)がインストールされていること
-- Gemma 3 (4B)モデルがOllamaでインストールされていること
+- Ollamaを使用する場合：
+  - [Ollama](https://ollama.com/)がインストールされていること
+  - 任意のLLMモデル（デフォルトはGemma 3 4B）がOllamaでインストールされていること
+- OpenAI APIを使用する場合：
+  - 有効なOpenAI APIキー
 
 ## セットアップ
 
@@ -33,25 +39,34 @@ Smart Dictatorは、音声をテキストに変換し（音声認識）、その
    flutter pub get
    ```
 
-3. Ollamaをインストール（まだの場合）
+3. アプリを実行
+   ```
+   flutter run -d macos
+   ```
+
+### Ollamaを使用する場合（デフォルト）
+
+4. Ollamaをインストール（まだの場合）
    ```
    brew install ollama
    ```
 
-4. Gemma 3 (4B)モデルをダウンロード
+5. 使用したいLLMモデルをダウンロード（例：Gemma 3 4B）
    ```
    ollama pull gemma3:4b
    ```
 
-5. Ollamaサーバーを起動
+6. Ollamaサーバーを起動
    ```
    ollama serve
    ```
 
-6. アプリを実行
-   ```
-   flutter run -d macos
-   ```
+### OpenAI APIを使用する場合
+
+4. アプリの設定画面でOpenAI APIの設定を行う
+   - エンドポイント（デフォルト: https://api.openai.com/v1）
+   - モデル名（例: gpt-3.5-turbo）
+   - APIキー
 
 ## 使用方法
 

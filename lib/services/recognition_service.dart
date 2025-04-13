@@ -5,11 +5,13 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:ollama/ollama.dart';
+import '../models/prompt_settings.dart';
 import '../services/settings_service.dart';
 
 class RecognitionService extends ChangeNotifier {
   final SpeechToText _speech = SpeechToText();
-  final Ollama _ollama = Ollama();
+  late Ollama _ollama;
+  bool _openaiInitialized = false;
   final FlutterTts _flutterTts = FlutterTts();
   final SettingsService _settingsService;
 
@@ -19,7 +21,7 @@ class RecognitionService extends ChangeNotifier {
   String _processedText = '';
   String _translatedText = '';
   bool _isProcessing = false;
-  bool _ollamaAvailable = false;
+  bool _llmAvailable = false;
   bool _isSpeaking = false;
 
   // 録音時間の制限とカウントダウン用の変数
@@ -45,15 +47,219 @@ class RecognitionService extends ChangeNotifier {
   String get processedText => _processedText;
   String get translatedText => _translatedText;
   bool get isProcessing => _isProcessing;
-  bool get ollamaAvailable => _ollamaAvailable;
+  bool get llmAvailable => _llmAvailable;
   int get remainingSeconds => _remainingSeconds; // 残り時間を公開
   TranslationLanguage get selectedLanguage => _selectedLanguage;
   bool get isSpeaking => _isSpeaking;
 
+  // 現在使用中のLLMプロバイダーの情報を返す
+  String get currentLlmProvider =>
+      _settingsService.llmSettings.provider == LlmProvider.ollama
+          ? 'Ollama'
+          : 'OpenAI';
+
+  // 現在使用中のLLMモデル名を返す
+  String get currentLlmModel =>
+      _settingsService.llmSettings.provider == LlmProvider.ollama
+          ? _settingsService.llmSettings.ollamaModel
+          : _settingsService.llmSettings.openaiModel;
+
   RecognitionService(this._settingsService) {
     _selectedLanguage = availableLanguages[0]; // 英語をデフォルトとして選択
-    _initializeSpeech();
-    _initializeTts();
+    // 設定サービスの初期化が完了してから他の初期化を行う
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    // 設定サービスの初期化完了を待機
+    await _settingsService.initialized;
+    // 設定が確実に読み込まれた後にLLMなどを初期化
+    await _initializeLlm();
+    await _initializeSpeech();
+    await _initializeTts();
+  }
+
+  // OpenAI APIを使用してChatCompletionを実行する
+  Future<Map<String, dynamic>?> _callOpenAIChatAPI({
+    required String prompt,
+    int? maxTokens,
+  }) async {
+    final settings = _settingsService.llmSettings;
+    if (settings.openaiApiKey.isEmpty) {
+      debugPrint('OpenAI API key is empty');
+      return null;
+    }
+
+    final apiKey = settings.openaiApiKey;
+    final endpoint = settings.openaiEndpoint;
+    final model = settings.openaiModel;
+
+    try {
+      // OpenAI APIのエンドポイントURI
+      final uri = Uri.parse('$endpoint/chat/completions');
+
+      // リクエストヘッダー
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      };
+
+      // リクエストボディ
+      final Map<String, dynamic> requestBody = {
+        'model': model,
+        'messages': [
+          {
+            'role': 'user',
+            'content': prompt,
+          }
+        ],
+      };
+
+      // オプションパラメータの追加
+      if (maxTokens != null) {
+        requestBody['max_tokens'] = maxTokens;
+      }
+
+      // APIリクエスト送信
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        final errorBody = response.body;
+        // HTMLエラーレスポンスの検出
+        if (errorBody.contains('<!DOCTYPE html>') ||
+            errorBody.contains('<html>') ||
+            errorBody.contains('</html>')) {
+          debugPrint(
+              'OpenAI API error: HTMLレスポンスが返されました。エンドポイントURLが正しいか確認してください。');
+          return null;
+        }
+
+        // JSONエラーレスポンスの解析を試みる
+        try {
+          final errorJson = jsonDecode(errorBody);
+          final errorMessage =
+              errorJson['error']?['message'] ?? 'Unknown error';
+          debugPrint('OpenAI API error: $errorMessage');
+        } catch (e) {
+          debugPrint(
+              'OpenAI API error: ステータスコード ${response.statusCode}, レスポンス: ${response.body}');
+        }
+        return null;
+      }
+    } catch (e) {
+      debugPrint('OpenAI API request error: $e');
+      return null;
+    }
+  }
+
+  // LLMの初期化
+  Future<void> _initializeLlm() async {
+    try {
+      final llmSettings = _settingsService.llmSettings;
+      debugPrint('LLM provider initializing: ${llmSettings.provider}');
+
+      // Ollamaの初期化
+      _ollama = Ollama(baseUrl: Uri.parse(llmSettings.ollamaEndpoint));
+
+      if (llmSettings.provider == LlmProvider.openai &&
+          llmSettings.openaiApiKey.isNotEmpty) {
+        // OpenAIの初期化 - APIキーとエンドポイントがあれば初期化とみなす
+        _openaiInitialized = true;
+        debugPrint(
+            'OpenAI initialized with endpoint: ${llmSettings.openaiEndpoint}');
+        debugPrint('OpenAI model set to: ${llmSettings.openaiModel}');
+      } else {
+        _openaiInitialized = false;
+        if (llmSettings.provider == LlmProvider.openai) {
+          debugPrint('OpenAI API key is empty - not initializing OpenAI');
+        }
+      }
+
+      await _checkLlmAvailability();
+    } catch (e) {
+      debugPrint('LLMの初期化中にエラーが発生しました: $e');
+      _llmAvailable = false;
+    }
+
+    notifyListeners();
+  }
+
+  // LLMの再初期化
+  Future<void> reinitializeLlm() async {
+    _llmAvailable = false;
+    notifyListeners();
+    await _initializeLlm();
+  }
+
+  // OpenAI APIの動作テスト（設定画面から手動で呼び出せるように）
+  Future<String> testOpenAI() async {
+    if (_settingsService.llmSettings.provider != LlmProvider.openai ||
+        _settingsService.llmSettings.openaiApiKey.isEmpty) {
+      return 'OpenAI APIが設定されていません';
+    }
+
+    try {
+      final settings = _settingsService.llmSettings;
+      final apiKey = settings.openaiApiKey;
+      final endpoint = settings.openaiEndpoint;
+      final model = settings.openaiModel;
+
+      // OpenAI APIのエンドポイントURI
+      final uri = Uri.parse('$endpoint/chat/completions');
+
+      // リクエストヘッダー
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      };
+
+      // リクエストボディ (response_formatを削除)
+      final body = jsonEncode({
+        'model': model,
+        'messages': [
+          {'role': 'user', 'content': 'Hello'}
+        ],
+        'max_tokens': 10,
+      });
+
+      // APIリクエスト送信
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        return 'OpenAI API接続テスト成功！モデル: $model';
+      } else {
+        final errorBody = response.body;
+        // HTMLエラーレスポンスの検出
+        if (errorBody.contains('<!DOCTYPE html>') ||
+            errorBody.contains('<html>') ||
+            errorBody.contains('</html>')) {
+          return 'OpenAI API接続エラー: HTMLレスポンスが返されました。エンドポイントURLが正しいか確認してください。';
+        }
+
+        // JSONエラーレスポンスの解析を試みる
+        try {
+          final errorJson = jsonDecode(errorBody);
+          final errorMessage =
+              errorJson['error']?['message'] ?? 'Unknown error';
+          return 'OpenAI API接続エラー: $errorMessage';
+        } catch (e) {
+          return 'OpenAI API接続エラー: $e\n\nレスポンス: ${response.body}';
+        }
+      }
+    } catch (e) {
+      // エラーメッセージをそのまま返すようにして選択可能にする
+      return '$e';
+    }
   }
 
   Future<void> _initializeTts() async {
@@ -106,23 +312,54 @@ class RecognitionService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> checkOllamaServer() async {
+  Future<void> _checkLlmAvailability() async {
+    final llmSettings = _settingsService.llmSettings;
+
     try {
-      final response =
-          await http.get(Uri.parse('http://localhost:11434/v1/models'));
-      if (response.statusCode == 200) {
-        final models = jsonDecode(response.body);
-        _ollamaAvailable = models.isNotEmpty;
-        debugPrint('Ollama server is available with models: $models');
-      } else {
-        _ollamaAvailable = false;
-        debugPrint(
-            'Ollama server is not available. Status code: ${response.statusCode}');
+      if (llmSettings.provider == LlmProvider.ollama) {
+        // Ollamaの利用可能性をチェック
+        final response = await http
+            .get(Uri.parse('${llmSettings.ollamaEndpoint}/v1/models'));
+
+        if (response.statusCode == 200) {
+          final models = jsonDecode(response.body);
+          _llmAvailable = models.isNotEmpty;
+          debugPrint('Ollama server is available with models: $models');
+        } else {
+          _llmAvailable = false;
+          debugPrint(
+              'Ollama server is not available. Status code: ${response.statusCode}');
+        }
+      } else if (llmSettings.provider == LlmProvider.openai) {
+        // OpenAIの利用可能性をチェック
+        if (_openaiInitialized && llmSettings.openaiApiKey.isNotEmpty) {
+          try {
+            // 簡単なリクエストを実行して接続をテスト
+            final result = await _callOpenAIChatAPI(
+              prompt: 'test',
+              maxTokens: 5,
+            );
+
+            _llmAvailable = result != null;
+            if (_llmAvailable) {
+              debugPrint('OpenAI API is available');
+            } else {
+              debugPrint('OpenAI API test request failed');
+            }
+          } catch (e) {
+            _llmAvailable = false;
+            debugPrint('OpenAI API is not available: $e');
+          }
+        } else {
+          _llmAvailable = false;
+          debugPrint('OpenAI API configuration is incomplete');
+        }
       }
     } catch (e) {
-      _ollamaAvailable = false;
-      debugPrint('Error checking Ollama server: $e');
+      _llmAvailable = false;
+      debugPrint('Error checking LLM availability: $e');
     }
+
     notifyListeners();
   }
 
@@ -145,9 +382,6 @@ class RecognitionService extends ChangeNotifier {
       debugPrint('Speech recognition initialized: $_isInitialized');
 
       if (_isInitialized) {
-        // Ollamaサーバーのチェック
-        await checkOllamaServer();
-
         // 詳細なデバッグ情報を表示
         try {
           final locales = await _speech.locales();
@@ -184,7 +418,8 @@ class RecognitionService extends ChangeNotifier {
 
     if (!_isInitialized) {
       // 音声認識が初期化できない場合は、権限が必要なことを通知
-      debugPrint('Speech recognition not initialized. Please grant permissions');
+      debugPrint(
+          'Speech recognition not initialized. Please grant permissions');
       return;
     }
 
@@ -213,7 +448,6 @@ class RecognitionService extends ChangeNotifier {
           },
           listenFor: const Duration(seconds: 120),
           pauseFor: const Duration(seconds: 5),
-          cancelOnError: true,
         );
 
         _isListening = true;
@@ -281,7 +515,7 @@ class RecognitionService extends ChangeNotifier {
   }
 
   Future<void> processText() async {
-    if (_recognizedText.isEmpty || !_ollamaAvailable) return;
+    if (_recognizedText.isEmpty || !_llmAvailable) return;
 
     _isProcessing = true;
     notifyListeners();
@@ -290,19 +524,58 @@ class RecognitionService extends ChangeNotifier {
       // SettingsServiceのプロンプト設定を使用
       final promptText = _settingsService.promptSettings
           .applyProcessingPrompt(_recognizedText);
-
-      final stream = _ollama.generate(
-        promptText,
-        model: 'gemma3:4b',
-      );
+      final llmSettings = _settingsService.llmSettings;
 
       _processedText = '';
-      await for (final chunk in stream) {
-        _processedText += chunk.toString();
+      debugPrint('OpenAI Intialized: $_openaiInitialized');
+
+      if (llmSettings.provider == LlmProvider.ollama) {
+        // Ollamaを使用
+        final stream = _ollama.generate(
+          promptText,
+          model: llmSettings.ollamaModel,
+        );
+
+        await for (final chunk in stream) {
+          _processedText += chunk.toString();
+        }
+      } else if (llmSettings.provider == LlmProvider.openai &&
+          _openaiInitialized) {
+        // OpenAIを使用
+        final result = await _callOpenAIChatAPI(
+          prompt: promptText,
+        );
+
+        debugPrint(result.toString());
+
+        if (result != null &&
+            result['choices'] != null &&
+            result['choices'].isNotEmpty) {
+          // OpenAI API レスポンスから内容を抽出
+          final firstChoice = result['choices'][0];
+          final content = firstChoice['message']?['content'];
+
+          debugPrint(content.toString());
+
+          if (content != null) {
+            // APIから返されるのはすでに文字列としてデコードされているため、
+            // 追加のJSONデコードはスキップし、テキストを直接使用する
+            _processedText = content.toString();
+          }
+        }
       }
     } catch (e) {
-      _processedText = 'テキスト処理中にエラーが発生しました: $e';
-      debugPrint('Error processing text: $e');
+      final errorStr = e.toString();
+      if (errorStr.contains('<!DOCTYPE html>') ||
+          errorStr.contains('<html>') ||
+          errorStr.contains('</html>')) {
+        _processedText =
+            'テキスト処理中にエラーが発生しました: HTMLレスポンスが返されました。エンドポイントURLが正しいか確認してください。';
+        debugPrint('Error processing text: HTMLレスポンスが返されました');
+      } else {
+        _processedText = 'テキスト処理中にエラーが発生しました: $e';
+        debugPrint('Error processing text: $e');
+      }
     } finally {
       _isProcessing = false;
       notifyListeners();
@@ -310,7 +583,7 @@ class RecognitionService extends ChangeNotifier {
   }
 
   Future<void> translateText() async {
-    if (_processedText.isEmpty || !_ollamaAvailable) return;
+    if (_processedText.isEmpty || !_llmAvailable) return;
 
     _isProcessing = true;
     notifyListeners();
@@ -319,19 +592,53 @@ class RecognitionService extends ChangeNotifier {
       // SettingsServiceのプロンプト設定を使用
       final promptText = _settingsService.promptSettings.applyTranslationPrompt(
           _processedText, _selectedLanguage.nameInJapanese);
-
-      final stream = _ollama.generate(
-        promptText,
-        model: 'gemma3:4b',
-      );
+      final llmSettings = _settingsService.llmSettings;
 
       _translatedText = '';
-      await for (final chunk in stream) {
-        _translatedText += chunk.toString();
+
+      if (llmSettings.provider == LlmProvider.ollama) {
+        // Ollamaを使用
+        final stream = _ollama.generate(
+          promptText,
+          model: llmSettings.ollamaModel,
+        );
+
+        await for (final chunk in stream) {
+          _translatedText += chunk.toString();
+        }
+      } else if (llmSettings.provider == LlmProvider.openai &&
+          _openaiInitialized) {
+        // OpenAIを使用
+        final result = await _callOpenAIChatAPI(
+          prompt: promptText,
+        );
+
+        if (result != null &&
+            result['choices'] != null &&
+            result['choices'].isNotEmpty) {
+          // OpenAI API レスポンスから内容を抽出
+          final firstChoice = result['choices'][0];
+          final content = firstChoice['message']?['content'];
+
+          if (content != null) {
+            // APIから返されるのはすでに文字列としてデコードされているため、
+            // 追加のJSONデコードはスキップし、テキストを直接使用する
+            _translatedText = content.toString();
+          }
+        }
       }
     } catch (e) {
-      _translatedText = 'テキスト翻訳中にエラーが発生しました: $e';
-      debugPrint('Error translating text: $e');
+      final errorStr = e.toString();
+      if (errorStr.contains('<!DOCTYPE html>') ||
+          errorStr.contains('<html>') ||
+          errorStr.contains('</html>')) {
+        _translatedText =
+            'テキスト翻訳中にエラーが発生しました: HTMLレスポンスが返されました。エンドポイントURLが正しいか確認してください。';
+        debugPrint('Error translating text: HTMLレスポンスが返されました');
+      } else {
+        _translatedText = 'テキスト翻訳中にエラーが発生しました: $e';
+        debugPrint('Error translating text: $e');
+      }
     } finally {
       _isProcessing = false;
       notifyListeners();
@@ -362,7 +669,7 @@ class RecognitionService extends ChangeNotifier {
     notifyListeners();
 
     // テキストが変更された場合、自動的に処理を実行
-    if (_ollamaAvailable && newText.isNotEmpty) {
+    if (_llmAvailable && newText.isNotEmpty) {
       await processText();
     }
   }
@@ -375,7 +682,7 @@ class RecognitionService extends ChangeNotifier {
     notifyListeners();
 
     // テキストが変更された場合、常に自動的に翻訳を実行
-    if (_ollamaAvailable && newText.isNotEmpty) {
+    if (_llmAvailable && newText.isNotEmpty) {
       await translateText();
     }
   }
@@ -386,12 +693,12 @@ class RecognitionService extends ChangeNotifier {
   }
 
   Future<void> regenerateProcessedText() async {
-    if (_recognizedText.isEmpty || !_ollamaAvailable) return;
+    if (_recognizedText.isEmpty || !_llmAvailable) return;
     await processText();
   }
 
   Future<void> regenerateTranslation() async {
-    if (_processedText.isEmpty || !_ollamaAvailable) return;
+    if (_processedText.isEmpty || !_llmAvailable) return;
     await translateText();
   }
 }

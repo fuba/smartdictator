@@ -53,16 +53,16 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 32),
-            if (!recognitionService.ollamaAvailable)
-              const Card(
+            if (!recognitionService.llmAvailable)
+              Card(
                 color: Colors.amber,
                 child: Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'OllamaサーバーとGemma3:4bモデルが見つかりません。\n'
-                    'テキスト整形と翻訳機能を使用するには、Ollamaサーバーを起動し、'
-                    'Gemma3:4bモデルをインストールしてください。',
-                    style: TextStyle(fontSize: 14),
+                    'LLM接続が利用できません:\n'
+                    '${recognitionService.currentLlmProvider}の${recognitionService.currentLlmModel}に接続できません。\n'
+                    '設定画面でLLM設定を確認してください。',
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ),
               ),
