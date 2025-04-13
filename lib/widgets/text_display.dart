@@ -200,6 +200,8 @@ class _TextDisplayState extends State<TextDisplay> {
                       icon: const Icon(Icons.edit, size: 20),
                       onPressed: () {
                         setState(() {
+                          _controller.text = widget.text;
+                          _current = widget.text;
                           _isEditing = true;
                         });
                       },

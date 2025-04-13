@@ -5,7 +5,8 @@ import 'package:smartdictator/screens/home_screen.dart';
 import 'package:smartdictator/services/recognition_service.dart';
 
 void main() {
-  testWidgets('HomeScreen has necessary UI elements', (WidgetTester tester) async {
+  testWidgets('HomeScreen has necessary UI elements',
+      (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(
       ChangeNotifierProvider(
@@ -23,13 +24,14 @@ void main() {
     expect(find.text('修正後テキスト:'), findsOneWidget);
     expect(find.text('英訳結果:'), findsOneWidget);
     expect(find.text('英訳'), findsOneWidget);
-    
+
     // Verify the record button
     expect(find.byIcon(Icons.mic_none), findsOneWidget);
   });
 }
 
-class MockRecognitionService extends ChangeNotifier implements RecognitionService {
+class MockRecognitionService extends ChangeNotifier
+    implements RecognitionService {
   @override
   bool get isInitialized => true;
 
@@ -65,4 +67,97 @@ class MockRecognitionService extends ChangeNotifier implements RecognitionServic
 
   @override
   Future<void> translateText() async {}
+
+  @override
+  Future<void> checkOllamaServer() async {}
+
+  @override
+  Future<void> regenerateProcessedText() async {}
+
+  @override
+  Future<void> regenerateTranslation() async {}
+
+  @override
+  Future<void> reinitializeSpeech() async {}
+
+  @override
+  String get processingStatus => '';
+
+  @override
+  String get translationStatus => '';
+
+  @override
+  bool get isCorrecting => false;
+
+  @override
+  bool get isTranslating => false;
+
+  @override
+  String get language => 'ja-JP';
+
+  @override
+  void setLanguage(String languageCode) {}
+
+  @override
+  Future<void> cancelListening() async {}
+
+  @override
+  Future<void> manualProcessText(String text) async {}
+
+  @override
+  Future<void> correctText() async {}
+
+  @override
+  String get correctionPrompt => '';
+
+  @override
+  // TODO: implement availableLanguages
+  List<TranslationLanguage> get availableLanguages =>
+      throw UnimplementedError();
+
+  @override
+  // TODO: implement isSpeaking
+  bool get isSpeaking => throw UnimplementedError();
+
+  @override
+  // TODO: implement remainingSeconds
+  int get remainingSeconds => throw UnimplementedError();
+
+  @override
+  // TODO: implement selectedLanguage
+  TranslationLanguage get selectedLanguage => throw UnimplementedError();
+
+  @override
+  void setTranslationLanguage(TranslationLanguage language) {
+    // TODO: implement setTranslationLanguage
+  }
+
+  @override
+  Future<void> speak(String text, {String? languageCode}) {
+    // TODO: implement speak
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> stopSpeaking() {
+    // TODO: implement stopSpeaking
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> updateProcessedText(String newText) {
+    // TODO: implement updateProcessedText
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> updateRecognizedText(String newText) {
+    // TODO: implement updateRecognizedText
+    throw UnimplementedError();
+  }
+
+  @override
+  void updateTranslatedText(String newText) {
+    // TODO: implement updateTranslatedText
+  }
 }

@@ -288,7 +288,8 @@ class RecognitionService extends ChangeNotifier {
 
     try {
       // SettingsServiceのプロンプト設定を使用
-      final promptText = _settingsService.promptSettings.applyProcessingPrompt(_recognizedText);
+      final promptText = _settingsService.promptSettings
+          .applyProcessingPrompt(_recognizedText);
 
       final stream = _ollama.generate(
         promptText,
@@ -317,9 +318,7 @@ class RecognitionService extends ChangeNotifier {
     try {
       // SettingsServiceのプロンプト設定を使用
       final promptText = _settingsService.promptSettings.applyTranslationPrompt(
-        _processedText, 
-        _selectedLanguage.nameInJapanese
-      );
+          _processedText, _selectedLanguage.nameInJapanese);
 
       final stream = _ollama.generate(
         promptText,
