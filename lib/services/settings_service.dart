@@ -30,7 +30,7 @@ class SettingsService extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print('設定の読み込み中にエラーが発生しました: $e');
+      debugPrint('設定の読み込み中にエラーが発生しました: $e');
     }
   }
 
@@ -65,7 +65,7 @@ class SettingsService extends ChangeNotifier {
       await prefs.setString(
           _promptSettingsKey, json.encode(_promptSettings.toJson()));
     } catch (e) {
-      print('設定の保存中にエラーが発生しました: $e');
+      debugPrint('設定の保存中にエラーが発生しました: $e');
     }
   }
 }

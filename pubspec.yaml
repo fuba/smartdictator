@@ -13,17 +13,17 @@ dependencies:
     sdk: flutter
   speech_to_text: ^7.0.0
   http: ^1.1.0
-  record: ^4.4.4
+  record: ^6.0.0
   path_provider: ^2.1.1
   provider: ^6.0.5
-  flutter_tts: ^3.8.3
+  flutter_tts: ^4.2.2
   ollama: ^1.0.4
   shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true

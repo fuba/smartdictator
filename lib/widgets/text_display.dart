@@ -117,9 +117,9 @@ class _TextDisplayState extends State<TextDisplay> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _isEditing
-            ? Colors.blue.withOpacity(0.05)
+            ? const Color.fromRGBO(33, 150, 243, 0.05)
             : widget.isProcessing
-                ? Colors.amber.withOpacity(0.1)
+                ? const Color.fromRGBO(255, 193, 7, 0.1)
                 : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
@@ -128,8 +128,8 @@ class _TextDisplayState extends State<TextDisplay> {
               : widget.isProcessing
                   ? Colors.orange
                   : widget.isEmpty
-                      ? Colors.grey.withOpacity(0.3)
-                      : Theme.of(context).primaryColor.withOpacity(0.5),
+                      ? const Color.fromRGBO(158, 158, 158, 0.3)
+                      : Theme.of(context).primaryColor.withAlpha(127),
           width: _isEditing || widget.isProcessing ? 1.5 : 1,
         ),
       ),

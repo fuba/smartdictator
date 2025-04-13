@@ -85,13 +85,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       maxLines: maxLines,
       onChanged: (value) {
         // 日本語入力時の重複を検出して修正
-        if (currentValue != null && currentValue!.length < value.length) {
-          final suffix = value.substring(currentValue!.length);
+        if (currentValue != null && currentValue.length < value.length) {
+          final suffix = value.substring(currentValue.length);
           if (suffix.length > 1 && value == "$currentValue$suffix") {
             // 重複を検出したら前回の値に戻す
-            controller.text = currentValue!;
+            controller.text = currentValue;
             controller.selection = TextSelection.fromPosition(
-              TextPosition(offset: currentValue!.length),
+              TextPosition(offset: currentValue.length),
             );
             return;
           }

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:async'; // Timerを使用するために追加
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
@@ -75,7 +75,7 @@ class RecognitionService extends ChangeNotifier {
     _flutterTts.setErrorHandler((message) {
       _isSpeaking = false;
       notifyListeners();
-      print('TTS Error: $message');
+      debugPrint('TTS Error: $message');
     });
   }
 
@@ -113,36 +113,36 @@ class RecognitionService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final models = jsonDecode(response.body);
         _ollamaAvailable = models.isNotEmpty;
-        print('Ollama server is available with models: $models');
+        debugPrint('Ollama server is available with models: $models');
       } else {
         _ollamaAvailable = false;
-        print(
+        debugPrint(
             'Ollama server is not available. Status code: ${response.statusCode}');
       }
     } catch (e) {
       _ollamaAvailable = false;
-      print('Error checking Ollama server: $e');
+      debugPrint('Error checking Ollama server: $e');
     }
     notifyListeners();
   }
 
   Future<void> _initializeSpeech() async {
     try {
-      print('Initializing speech recognition...');
+      debugPrint('Initializing speech recognition...');
 
       // 権限チェックを明示的に行う
       bool? hasSpeechPermission = await _speech.hasPermission;
-      print('Initial permission check: ${hasSpeechPermission ?? false}');
+      debugPrint('Initial permission check: $hasSpeechPermission');
 
       // 一度初期化を試行
       bool? available = await _speech.initialize(
-        onError: (error) => print('Speech recognition error: $error'),
-        onStatus: (status) => print('Speech recognition status: $status'),
+        onError: (error) => debugPrint('Speech recognition error: $error'),
+        onStatus: (status) => debugPrint('Speech recognition status: $status'),
         debugLogging: true,
       );
 
-      _isInitialized = available ?? false;
-      print('Speech recognition initialized: $_isInitialized');
+      _isInitialized = available == true;
+      debugPrint('Speech recognition initialized: $_isInitialized');
 
       if (_isInitialized) {
         // Ollamaサーバーのチェック
@@ -151,45 +151,45 @@ class RecognitionService extends ChangeNotifier {
         // 詳細なデバッグ情報を表示
         try {
           final locales = await _speech.locales();
-          print(
+          debugPrint(
               'Available locales: ${locales.map((e) => e.localeId).join(', ')}');
         } catch (e) {
-          print('Error getting locales: $e');
+          debugPrint('Error getting locales: $e');
         }
 
         try {
           bool? hasPermission = await _speech.hasPermission;
-          print('Has permission after initialize: ${hasPermission ?? false}');
+          debugPrint('Has permission after initialize: $hasPermission');
         } catch (e) {
-          print('Error checking permission: $e');
+          debugPrint('Error checking permission: $e');
         }
       } else {
-        print('Speech recognition initialization failed.');
+        debugPrint('Speech recognition initialization failed');
       }
 
       notifyListeners();
     } catch (e) {
-      print('Failed to initialize speech recognition: $e');
+      debugPrint('Failed to initialize speech recognition: $e');
       _isInitialized = false;
       notifyListeners();
     }
   }
 
   Future<void> startListening() async {
-    print('startListening called');
+    debugPrint('startListening called');
     if (!_isInitialized) {
-      print('Not initialized, attempting to initialize speech');
+      debugPrint('Not initialized, attempting to initialize speech');
       await _initializeSpeech();
     }
 
     if (!_isInitialized) {
       // 音声認識が初期化できない場合は、権限が必要なことを通知
-      print('Speech recognition not initialized. Please grant permissions.');
+      debugPrint('Speech recognition not initialized. Please grant permissions');
       return;
     }
 
     if (!_isListening) {
-      print('Starting listening...');
+      debugPrint('Starting listening...');
       try {
         // 残り時間をリセットしタイマーを開始
         _remainingSeconds = maxRecordingSeconds;
@@ -202,12 +202,12 @@ class RecognitionService extends ChangeNotifier {
             locale.localeId.toLowerCase().contains('japanese'));
 
         final localeId = hasJapanese ? 'ja-JP' : '';
-        print('Using locale: ${localeId.isEmpty ? "Default" : localeId}');
+        debugPrint('Using locale: ${localeId.isEmpty ? "Default" : localeId}');
 
-        bool? success = await _speech.listen(
+        await _speech.listen(
           localeId: localeId,
           onResult: (result) {
-            print('Recognition result: ${result.recognizedWords}');
+            debugPrint('Recognition result: ${result.recognizedWords}');
             _recognizedText = result.recognizedWords;
             notifyListeners();
           },
@@ -217,10 +217,10 @@ class RecognitionService extends ChangeNotifier {
         );
 
         _isListening = true;
-        print('Listening started: $_isListening');
+        debugPrint('Listening started: $_isListening');
         notifyListeners();
       } catch (e) {
-        print('Error starting speech recognition: $e');
+        debugPrint('Error starting speech recognition: $e');
         _isListening = false;
         _cancelRecordingTimer(); // エラー時にタイマーをキャンセル
         notifyListeners();
@@ -229,33 +229,33 @@ class RecognitionService extends ChangeNotifier {
   }
 
   Future<void> stopListening() async {
-    print('stopListening called');
+    debugPrint('stopListening called');
     if (_isListening) {
-      print('Stopping listening...');
+      debugPrint('Stopping listening...');
       try {
         await _speech.stop();
-        print('Speech stopped successfully');
+        debugPrint('Speech stopped successfully');
       } catch (e) {
-        print('Error stopping speech: $e');
+        debugPrint('Error stopping speech: $e');
       }
 
       _isListening = false;
       _cancelRecordingTimer(); // リスニング停止時にタイマーをキャンセル
       notifyListeners();
-      print('isListening set to false');
+      debugPrint('isListening set to false');
 
       if (_recognizedText.isNotEmpty) {
-        print('Recognized text is not empty, starting processing');
+        debugPrint('Recognized text is not empty, starting processing');
         // 処理状態を即座に更新して通知
         _isProcessing = true;
         notifyListeners();
 
         await processText();
       } else {
-        print('Recognized text is empty, not processing');
+        debugPrint('Recognized text is empty, not processing');
       }
     } else {
-      print('Not listening, nothing to stop');
+      debugPrint('Not listening, nothing to stop');
     }
   }
 
@@ -302,7 +302,7 @@ class RecognitionService extends ChangeNotifier {
       }
     } catch (e) {
       _processedText = 'テキスト処理中にエラーが発生しました: $e';
-      print('Error processing text: $e');
+      debugPrint('Error processing text: $e');
     } finally {
       _isProcessing = false;
       notifyListeners();
@@ -331,7 +331,7 @@ class RecognitionService extends ChangeNotifier {
       }
     } catch (e) {
       _translatedText = 'テキスト翻訳中にエラーが発生しました: $e';
-      print('Error translating text: $e');
+      debugPrint('Error translating text: $e');
     } finally {
       _isProcessing = false;
       notifyListeners();

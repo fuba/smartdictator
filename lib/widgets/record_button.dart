@@ -13,6 +13,38 @@ class RecordButton extends StatefulWidget {
 class _RecordButtonState extends State<RecordButton> {
   // ボタンが押されているかの状態を追加
   bool _isPressed = false;
+  
+  void _showPermissionDialog() {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('音声認識の初期化が必要です'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('音声認識を使用するには、以下の手順で権限を許可してください：'),
+            SizedBox(height: 16),
+            Text('1. システム設定 > プライバシーとセキュリティ > マイク を開く'),
+            Text('2. 「smartdictator」アプリを許可する'),
+            SizedBox(height: 8),
+            Text('3. システム設定 > プライバシーとセキュリティ > 音声認識 を開く'),
+            Text('4. 「smartdictator」アプリを許可する'),
+            SizedBox(height: 16),
+            Text('※ アプリが表示されない場合は、一度アプリを閉じて再起動してください。'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,10 +107,10 @@ class _RecordButtonState extends State<RecordButton> {
                                 : Colors.blue,
                 shape: BoxShape.circle,
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                  const BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.2),
                     blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
@@ -111,7 +143,7 @@ class _RecordButtonState extends State<RecordButton> {
           const SizedBox(height: 16),
           Text(
             isListening
-                ? '録音中... あと${remainingSeconds}秒 (指を離すと終了)' // 残り時間表示を追加
+                ? '録音中... あと$remainingSeconds秒 (指を離すと終了)' // 残り時間表示を追加
                 : isProcessing
                     ? '処理中...'
                     : !isInitialized // isInitializedを使用
@@ -148,34 +180,7 @@ class _RecordButtonState extends State<RecordButton> {
                       // isInitializedを再評価
                       if (!recognitionService.isInitialized && mounted) {
                         // mountedチェックを追加
-                        // ignore: use_build_context_synchronously
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('音声認識の初期化が必要です'),
-                            content: const Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('音声認識を使用するには、以下の手順で権限を許可してください：'),
-                                SizedBox(height: 16),
-                                Text('1. システム設定 > プライバシーとセキュリティ > マイク を開く'),
-                                Text('2. 「smartdictator」アプリを許可する'),
-                                SizedBox(height: 8),
-                                Text('3. システム設定 > プライバシーとセキュリティ > 音声認識 を開く'),
-                                Text('4. 「smartdictator」アプリを許可する'),
-                                SizedBox(height: 16),
-                                Text('※ アプリが表示されない場合は、一度アプリを閉じて再起動してください。'),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
+                        _showPermissionDialog();
                       }
                     },
                     child: const Text('マイク権限を確認/リクエスト'),
