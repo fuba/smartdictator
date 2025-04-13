@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "me.fuba.smartdictator"
+    namespace = "com.example.smartdictator"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // Unique Application ID
-        applicationId = "me.fuba.smartdictator"
+        applicationId = "com.example.smartdictator"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
