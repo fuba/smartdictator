@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'services/recognition_service.dart';
+import 'services/settings_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +16,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => RecognitionService()),
+        // 順序が重要: SettingsServiceを先に作成
+        ChangeNotifierProvider(create: (_) => SettingsService()),
+        // RecognitionServiceはSettingsServiceに依存
+        ChangeNotifierProxyProvider<SettingsService, RecognitionService>(
+          create: (context) => RecognitionService(
+              Provider.of<SettingsService>(context, listen: false)),
+          update: (context, settingsService, previousRecognitionService) =>
+              previousRecognitionService ?? RecognitionService(settingsService),
+        ),
       ],
       child: MaterialApp(
         title: 'Smart Dictator',
