@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build macOS
+        run: flutter build macos --release
+      - name: Create App Zip
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r SmartDictator-macOS.zip SmartDictator.app
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-app
+          path: build/macos/Build/Products/Release/SmartDictator-macOS.zip
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build iOS
+        run: flutter build ios --release --no-codesign
+      - name: Archive iOS app
+        run: |
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload
+          zip -r SmartDictator-iOS.ipa Payload
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-app
+          path: build/ios/iphoneos/SmartDictator-iOS.ipa
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build APK
+        run: flutter build apk --release
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/SmartDictator-Android.apk
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-app
+          path: build/app/outputs/flutter-apk/SmartDictator-Android.apk
+
+  create-release:
+    needs: [build-macos, build-ios, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            macos-app/SmartDictator-macOS.zip
+            ios-app/SmartDictator-iOS.ipa
+            android-app/SmartDictator-Android.apk
+          body: |
+            Smart Dictator v${{ github.ref_name }}
+            
+            ## アプリケーション概要
+            
+            Smart Dictatorは、音声をテキストに変換し、その出力を自然な日本語に整形して、必要に応じて英語に翻訳するFlutterアプリケーションです。
+            すべての処理はローカル環境で行われ、オフラインでの使用が可能です。
+            
+            ## ダウンロード方法
+            
+            - macOS: SmartDictator-macOS.zip をダウンロードして解凍
+            - iOS: SmartDictator-iOS.ipa (開発用)
+            - Android: SmartDictator-Android.apk
