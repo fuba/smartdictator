@@ -15,7 +15,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _translationPromptController;
   bool _isProcessingPromptEdited = false;
   bool _isTranslationPromptEdited = false;
-  
+
   // 日本語入力用の現在の値を保持する変数
   String? _processingPromptCurrent;
   String? _translationPromptCurrent;
@@ -30,7 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         TextEditingController(text: settings.processingPrompt);
     _translationPromptController =
         TextEditingController(text: settings.translationPrompt);
-    
+
     _processingPromptCurrent = settings.processingPrompt;
     _translationPromptCurrent = settings.translationPrompt;
 
@@ -96,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             return;
           }
         }
-        
+
         // 現在の値を更新
         if (controller == _processingPromptController) {
           _processingPromptCurrent = value;
