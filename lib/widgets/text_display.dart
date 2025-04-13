@@ -161,71 +161,69 @@ class _TextDisplayState extends State<TextDisplay> {
           else if (_isEditing)
             _buildJapaneseTextField()
           else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Text(
-                    widget.text,
-                    style: const TextStyle(fontSize: 16),
-                  ),
+                Text(
+                  widget.text,
+                  style: const TextStyle(fontSize: 16),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.onSpeakPressed != null)
-                      IconButton(
-                        icon: Icon(
-                          widget.isSpeaking ? Icons.stop : Icons.volume_up,
-                          size: 20,
-                          color: widget.isSpeaking ? Colors.red : null,
-                        ),
-                        onPressed: widget.onSpeakPressed,
-                        tooltip: widget.isSpeaking ? '停止' : '読み上げ',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    if (widget.onSpeakPressed != null) const SizedBox(width: 8),
-                    if (widget.onRegeneratePressed != null)
-                      IconButton(
-                        icon: const Icon(Icons.refresh, size: 20),
-                        onPressed: widget.onRegeneratePressed,
-                        tooltip: '再生成',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    if (widget.onRegeneratePressed != null)
-                      const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
-                      onPressed: () {
-                        setState(() {
-                          _controller.text = widget.text;
-                          _current = widget.text;
-                          _isEditing = true;
-                        });
-                      },
-                      tooltip: '編集',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 20),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: widget.text));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('テキストをクリップボードにコピーしました'),
-                            duration: Duration(seconds: 1),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      if (widget.onSpeakPressed != null)
+                        IconButton(
+                          icon: Icon(
+                            widget.isSpeaking ? Icons.stop : Icons.volume_up,
+                            size: 20,
+                            color: widget.isSpeaking ? Colors.red : null,
                           ),
-                        );
-                      },
-                      tooltip: 'コピー',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
+                          onPressed: widget.onSpeakPressed,
+                          tooltip: widget.isSpeaking ? '停止' : '読み上げ',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      if (widget.onRegeneratePressed != null)
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 20),
+                          onPressed: widget.onRegeneratePressed,
+                          tooltip: '再生成',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _controller.text = widget.text;
+                            _current = widget.text;
+                            _isEditing = true;
+                          });
+                        },
+                        tooltip: '編集',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 20),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: widget.text));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('テキストをクリップボードにコピーしました'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        tooltip: 'コピー',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
